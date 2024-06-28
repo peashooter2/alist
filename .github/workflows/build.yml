@@ -8,14 +8,14 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     strategy:
       matrix:
         platform: [ubuntu-latest]
-        go-version: [ '1.21' ]
+        go-version: [ '1.22' ]
     name: Build
     runs-on: ${{ matrix.platform }}
     steps:
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: benjlevesque/short-sha@v2.2
+      - uses: benjlevesque/short-sha@v3.0
         id: short-sha
 
       - name: Install dependencies
@@ -35,7 +35,6 @@ jobs:
           sudo snap install zig --classic --beta
           docker pull crazymax/xgo:latest
           go install github.com/crazy-max/xgo@latest
-          sudo apt install upx
 
       - name: Build
         run: |
