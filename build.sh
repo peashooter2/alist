@@ -16,7 +16,6 @@ echo "backend version: $version"
 echo "frontend version: $webVersion"
 
 ldflags="\
--w -s \
 -X 'github.com/alist-org/alist/v3/internal/conf.BuiltAt=$builtAt' \
 -X 'github.com/alist-org/alist/v3/internal/conf.GoVersion=$goVersion' \
 -X 'github.com/alist-org/alist/v3/internal/conf.GitAuthor=$gitAuthor' \
@@ -50,13 +49,13 @@ BuildWinArm64() {
   export CC=$(pwd)/wrapper/zcc-arm64
   export CXX=$(pwd)/wrapper/zcxx-arm64
   export CGO_ENABLED=1
-  go build -o "$1" -ldflags="$ldflags" -tags=jsoniter .
+  go build -o "$1" -ldflags="$ldflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
 }
 
 BuildDev() {
   rm -rf .git/
   mkdir -p "dist"
-  muslflags="--extldflags '-static -fpic' $ldflags"
+  muslflags="$ldflags"
   BASE="https://musl.nn.ci/"
   FILES=(x86_64-linux-musl-cross aarch64-linux-musl-cross)
   for i in "${FILES[@]}"; do
@@ -74,19 +73,17 @@ BuildDev() {
     export GOARCH=${os_arch##*-}
     export CC=${cgo_cc}
     export CGO_ENABLED=1
-    go build -o ./dist/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
+    go build -o ./dist/$appName-$os_arch -ldflags="$muslflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
   done
   xgo -targets=windows/amd64,darwin/amd64,darwin/arm64 -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
   mv alist-* dist
   cd dist
-  cp ./alist-windows-amd64.exe ./alist-windows-amd64-upx.exe
-  upx -9 ./alist-windows-amd64-upx.exe
   find . -type f -print0 | xargs -0 md5sum >md5.txt
   cat md5.txt
 }
 
 BuildDocker() {
-  go build -o ./bin/alist -ldflags="$ldflags" -tags=jsoniter .
+  go build -o ./bin/alist -ldflags="$ldflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
 }
 
 PrepareBuildDockerMusl() {
@@ -108,7 +105,7 @@ BuildDockerMultiplatform() {
   # run PrepareBuildDockerMusl before build
   export PATH=$PATH:$PWD/build/musl-libs/bin
 
-  docker_lflags="--extldflags '-static -fpic' $ldflags"
+  docker_lflags="$ldflags"
   export CGO_ENABLED=1
 
   OS_ARCHES=(linux-amd64 linux-arm64 linux-386 linux-s390x)
@@ -122,7 +119,7 @@ BuildDockerMultiplatform() {
     export GOARCH=$arch
     export CC=${cgo_cc}
     echo "building for $os_arch"
-    go build -o build/$os/$arch/alist -ldflags="$docker_lflags" -tags=jsoniter .
+    go build -o build/$os/$arch/alist -ldflags="$docker_lflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
   done
 
   DOCKER_ARM_ARCHES=(linux-arm/v6 linux-arm/v7)
@@ -136,7 +133,7 @@ BuildDockerMultiplatform() {
     export GOARM=${GO_ARM[$i]}
     export CC=${cgo_cc}
     echo "building for $docker_arch"
-    go build -o build/${docker_arch%%-*}/${docker_arch##*-}/alist -ldflags="$docker_lflags" -tags=jsoniter .
+    go build -o build/${docker_arch%%-*}/${docker_arch##*-}/alist -ldflags="$docker_lflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
   done
 }
 
@@ -145,17 +142,13 @@ BuildRelease() {
   mkdir -p "build"
   BuildWinArm64 ./build/alist-windows-arm64.exe
   xgo -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
-  # why? Because some target platforms seem to have issues with upx compression
-  upx -9 ./alist-linux-amd64
-  cp ./alist-windows-amd64.exe ./alist-windows-amd64-upx.exe
-  upx -9 ./alist-windows-amd64-upx.exe
   mv alist-* build
 }
 
 BuildReleaseLinuxMusl() {
   rm -rf .git/
   mkdir -p "build"
-  muslflags="--extldflags '-static -fpic' $ldflags"
+  muslflags="$ldflags"
   BASE="https://musl.nn.ci/"
   FILES=(x86_64-linux-musl-cross aarch64-linux-musl-cross mips-linux-musl-cross mips64-linux-musl-cross mips64el-linux-musl-cross mipsel-linux-musl-cross powerpc64le-linux-musl-cross s390x-linux-musl-cross)
   for i in "${FILES[@]}"; do
@@ -174,14 +167,14 @@ BuildReleaseLinuxMusl() {
     export GOARCH=${os_arch##*-}
     export CC=${cgo_cc}
     export CGO_ENABLED=1
-    go build -o ./build/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
+    go build -o ./build/$appName-$os_arch -ldflags="$muslflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
   done
 }
 
 BuildReleaseLinuxMuslArm() {
   rm -rf .git/
   mkdir -p "build"
-  muslflags="--extldflags '-static -fpic' $ldflags"
+  muslflags="$ldflags"
   BASE="https://musl.nn.ci/"
 #  FILES=(arm-linux-musleabi-cross arm-linux-musleabihf-cross armeb-linux-musleabi-cross armeb-linux-musleabihf-cross armel-linux-musleabi-cross armel-linux-musleabihf-cross armv5l-linux-musleabi-cross armv5l-linux-musleabihf-cross armv6-linux-musleabi-cross armv6-linux-musleabihf-cross armv7l-linux-musleabihf-cross armv7m-linux-musleabi-cross armv7r-linux-musleabihf-cross)
   FILES=(arm-linux-musleabi-cross arm-linux-musleabihf-cross armel-linux-musleabi-cross armel-linux-musleabihf-cross armv5l-linux-musleabi-cross armv5l-linux-musleabihf-cross armv6-linux-musleabi-cross armv6-linux-musleabihf-cross armv7l-linux-musleabihf-cross armv7m-linux-musleabi-cross armv7r-linux-musleabihf-cross)
@@ -207,7 +200,7 @@ BuildReleaseLinuxMuslArm() {
     export CC=${cgo_cc}
     export CGO_ENABLED=1
     export GOARM=${arm}
-    go build -o ./build/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
+    go build -o ./build/$appName-$os_arch -ldflags="$muslflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
   done
 }
 
@@ -227,7 +220,7 @@ BuildReleaseAndroid() {
     export GOARCH=${os_arch##*-}
     export CC=${cgo_cc}
     export CGO_ENABLED=1
-    go build -o ./build/$appName-android-$os_arch -ldflags="$ldflags" -tags=jsoniter .
+    go build -o ./build/$appName-android-$os_arch -ldflags="$ldflags" -gcflags '-N -l -E -L -complete' -tags=jsoniter .
     android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip ./build/$appName-android-$os_arch
   done
 }
